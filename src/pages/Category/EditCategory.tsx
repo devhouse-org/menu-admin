@@ -11,6 +11,7 @@ type categoryType = {
   name: string | null;
   restaurantId: string | null;
   icon?: string | null;
+  orderNumber?: number | null;
 };
 
 function EditCategory() {
@@ -19,6 +20,7 @@ function EditCategory() {
   const [name, setName] = useState<string | null>(record.name);
   const [restaurantId, setRestaurantId] = useState<string | null>(record.restaurantId);
   const [icon, setIcon] = useState<string | null>(record.icon || null);
+  const [orderNumber, setOrderNumber] = useState<number | null>(record.orderNumber || null);
   const { categoryId } = useParams();
   const navigate = useNavigate();
 
@@ -59,6 +61,7 @@ function EditCategory() {
       name: name?.trim() || "",
       restaurantId,
       icon: icon || null,
+      orderNumber: orderNumber,
     };
 
     mutation.mutate(newEdit);
@@ -140,6 +143,21 @@ function EditCategory() {
           <IconSelector
             onIconSelect={handleIconSelect}
             initialIcon={icon ?? undefined}
+          />
+        </div>
+
+        {/* Order Number */}
+        <div className="mb-4">
+          <label htmlFor="orderNumber" className="block text-sm font-medium text-gray-700">
+            Order Number
+          </label>
+          <input
+            type="number"
+            id="orderNumber"
+            value={orderNumber || ""}
+            onChange={(e) => setOrderNumber(e.target.value ? Number(e.target.value) : null)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="Enter display order number"
           />
         </div>
 

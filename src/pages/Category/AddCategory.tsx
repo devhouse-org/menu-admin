@@ -11,12 +11,14 @@ type CreateCategoryDto = {
   name: string;
   icon?: string | null;
   restaurantId: string;
+  orderNumber?: number | null;
 };
 
 function AddCategory() {
   const [name, setName] = useState<string>("");
   const [restaurantId, setRestaurantId] = useState<string>("");
   const [icon, setIcon] = useState<string | null>(null);
+  const [orderNumber, setOrderNumber] = useState<number | null>(null);
   const navigate = useNavigate();
 
   // Update to use infinite query for restaurants
@@ -56,6 +58,7 @@ function AddCategory() {
       name: name.trim(),
       restaurantId,
       icon: icon || null,
+      orderNumber: orderNumber,
     };
 
     mutation.mutate(newCategory);
@@ -127,6 +130,21 @@ function AddCategory() {
               )}
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Order Number */}
+        <div className="mb-4">
+          <label htmlFor="orderNumber" className="block text-sm font-medium text-gray-700">
+            Order Number
+          </label>
+          <input
+            type="number"
+            id="orderNumber"
+            value={orderNumber || ""}
+            onChange={(e) => setOrderNumber(e.target.value ? Number(e.target.value) : null)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="Enter display order number"
+          />
         </div>
 
         {/* Submit Button */}
