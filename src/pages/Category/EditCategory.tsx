@@ -18,6 +18,7 @@ function EditCategory() {
   const location = useLocation();
   const record = location.state;
   const [name, setName] = useState<string | null>(record.name);
+  const [nameAr, setNameAr] = useState<string | null>(null);
   const [restaurantId, setRestaurantId] = useState<string | null>(record.restaurantId);
   const [icon, setIcon] = useState<string | null>(record.icon || null);
   const [orderNumber, setOrderNumber] = useState<number | null>(record.orderNumber || null);
@@ -49,12 +50,9 @@ function EditCategory() {
     mutationFn: (newEdit: categoryType) => {
       return axiosInstance.put(`/category/${categoryId}`, newEdit);
     },
-    onSuccess: () => {
-      navigate("/categories");
-    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newEdit: categoryType = {
@@ -64,7 +62,27 @@ function EditCategory() {
       orderNumber: orderNumber,
     };
 
-    mutation.mutate(newEdit);
+    try {
+      // Update the category first
+      await mutation.mutateAsync(newEdit);
+      
+      // Add Arabic translation if provided
+      if (nameAr?.trim()) {
+        try {
+          await axiosInstance.post('/translation/add', {
+            key: name?.trim() || '',
+            value: nameAr.trim(),
+            language: 'ar'
+          });
+        } catch (error) {
+          console.error('Error adding translation:', error);
+        }
+      }
+      
+      navigate("/categories");
+    } catch (error) {
+      console.error('Error updating category or adding translation:', error);
+    }
   };
 
   const handleIconSelect = (selectedIcon: string) => {
@@ -99,6 +117,22 @@ function EditCategory() {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             placeholder="Enter category name"
             required
+          />
+        </div>
+
+        {/* Arabic Name */}
+        <div className="mb-4">
+          <label htmlFor="nameAr" className="block text-sm font-medium text-gray-700">
+            Arabic Name (Optional)
+          </label>
+          <input
+            type="text"
+            id="nameAr"
+            value={nameAr || ""}
+            onChange={(e) => setNameAr(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="Enter Arabic category name"
+            dir="rtl"
           />
         </div>
 

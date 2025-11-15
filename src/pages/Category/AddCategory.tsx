@@ -16,6 +16,7 @@ type CreateCategoryDto = {
 
 function AddCategory() {
   const [name, setName] = useState<string>("");
+  const [nameAr, setNameAr] = useState<string>("");
   const [restaurantId, setRestaurantId] = useState<string>("");
   const [icon, setIcon] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<number | null>(null);
@@ -46,12 +47,9 @@ function AddCategory() {
     mutationFn: (newCategory: CreateCategoryDto) => {
       return axiosInstance.post(`/category`, newCategory);
     },
-    onSuccess: () => {
-      navigate("/categories");
-    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const newCategory: CreateCategoryDto = {
@@ -61,7 +59,27 @@ function AddCategory() {
       orderNumber: orderNumber,
     };
 
-    mutation.mutate(newCategory);
+    try {
+      // Create the category first
+      await mutation.mutateAsync(newCategory);
+      
+      // Add Arabic translation if provided
+      if (nameAr.trim()) {
+        try {
+          await axiosInstance.post('/translation/add', {
+            key: name.trim(),
+            value: nameAr.trim(),
+            language: 'ar'
+          });
+        } catch (error) {
+          console.error('Error adding translation:', error);
+        }
+      }
+      
+      navigate("/categories");
+    } catch (error) {
+      console.error('Error creating category or adding translation:', error);
+    }
   };
 
   const handleIconSelect = (title: string) => {
@@ -96,6 +114,22 @@ function AddCategory() {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             placeholder="Enter category name"
             required
+          />
+        </div>
+
+        {/* Arabic Name */}
+        <div className="mb-4">
+          <label htmlFor="nameAr" className="block text-sm font-medium text-gray-700">
+            Arabic Name (Optional)
+          </label>
+          <input
+            type="text"
+            id="nameAr"
+            value={nameAr}
+            onChange={(e) => setNameAr(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="Enter Arabic category name"
+            dir="rtl"
           />
         </div>
 
