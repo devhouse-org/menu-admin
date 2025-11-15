@@ -161,14 +161,15 @@ function EditQuestion() {
           >
             Restaurant
           </label>
-          <Select value={restaurantId || "default"} onValueChange={setRestaurantId}>
+          <Select 
+            value={restaurantId || ""} 
+            onValueChange={setRestaurantId}
+            key={restaurantId || "no-value"}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a restaurant" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="default" disabled>
-                Select a restaurant
-              </SelectItem>
               {restaurants?.pages.map((page) =>
                 page.items.map((restaurant: any) => (
                   <SelectItem key={restaurant.id} value={restaurant.id}>

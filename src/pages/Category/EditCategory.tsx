@@ -2,7 +2,7 @@ import axiosInstance from "@/axiosInstance";
 import Spinner from "@/components/Spinner";
 import IconSelector from "@/components/IconSelector";
 import { useMutation, useInfiniteQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,26 @@ function EditCategory() {
   const [orderNumber, setOrderNumber] = useState<number | null>(record.orderNumber || null);
   const { categoryId } = useParams();
   const navigate = useNavigate();
+
+  // Fetch existing Arabic translation for category name
+  useEffect(() => {
+    const fetchTranslation = async () => {
+      if (record.name) {
+        try {
+          const response = await axiosInstance.get('/locale/translation-value', {
+            params: { key: record.name, lang: 'ar' }
+          });
+          if (response.data.value) {
+            setNameAr(response.data.value);
+          }
+        } catch (error) {
+          console.log('No existing translation found or error fetching:', error);
+        }
+      }
+    };
+    
+    fetchTranslation();
+  }, [record.name]);
 
   // Update to use infinite query for restaurants
   const {
@@ -141,7 +161,11 @@ function EditCategory() {
           <label htmlFor="restaurantId" className="block text-sm font-medium text-gray-700">
             Restaurant
           </label>
-          <Select value={restaurantId || ""} onValueChange={setRestaurantId}>
+          <Select 
+            value={restaurantId || ""} 
+            onValueChange={setRestaurantId}
+            key={restaurantId || "no-value"}
+          >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select a restaurant" />
             </SelectTrigger>

@@ -49,14 +49,39 @@ function EditItem() {
     if (itemData) {
       setName(itemData.name);
       setDescription(itemData.description);
-      // Translations are stored in the translation files, not in the item data
-      // So we initialize these as empty - user can add translations if needed
-      setNameAr(null);
-      setDescriptionAr(null);
       setPrice(itemData.price);
       setUploadImageUrl(itemData.image);
       setCategoryId(itemData.categoryId);
       setRestaurantId(itemData.category.restaurantId);
+      
+      // Fetch existing Arabic translations
+      const fetchTranslations = async () => {
+        try {
+          // Fetch name translation
+          if (itemData.name) {
+            const nameResponse = await axiosInstance.get('/locale/translation-value', {
+              params: { key: itemData.name, lang: 'ar' }
+            });
+            if (nameResponse.data.value) {
+              setNameAr(nameResponse.data.value);
+            }
+          }
+          
+          // Fetch description translation
+          if (itemData.description) {
+            const descResponse = await axiosInstance.get('/locale/translation-value', {
+              params: { key: itemData.description, lang: 'ar' }
+            });
+            if (descResponse.data.value) {
+              setDescriptionAr(descResponse.data.value);
+            }
+          }
+        } catch (error) {
+          console.log('No existing translations found or error fetching:', error);
+        }
+      };
+      
+      fetchTranslations();
     }
   }, [itemData]);
 
@@ -286,6 +311,7 @@ function EditItem() {
               setCategoryId("");
             }} 
             disabled={isLoadingRestaurants}
+            key={restaurantId || "no-restaurant"}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select Restaurant" />
@@ -333,6 +359,7 @@ function EditItem() {
             value={categoryId || ""} 
             onValueChange={(value) => setCategoryId(value)} 
             disabled={!restaurantId || isLoadingCategories}
+            key={categoryId || "no-category"}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select Category" />
