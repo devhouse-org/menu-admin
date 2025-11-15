@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 function AddItem() {
   const [name, setName] = useState<string>("");
   const [description, setDescription] = useState<string>("");
+  const [nameAr, setNameAr] = useState<string>("");
+  const [descriptionAr, setDescriptionAr] = useState<string>("");
   const [price, setPrice] = useState<number | null>(null);
   const [restaurantId, setRestaurantId] = useState<string>("");
   const [categoryId, setCategoryId] = useState<string>("");
@@ -67,9 +69,6 @@ function AddItem() {
     onError: (e) => {
       console.log(e);
     },
-    onSuccess: () => {
-      navigate("/items");
-    },
   });
 
   // Consolidated handleSubmit function using FormData
@@ -84,7 +83,42 @@ function AddItem() {
       image: base64Image,
     };
 
-    mutation.mutate(itemData);
+    try {
+      // Create the item first
+      await mutation.mutateAsync(itemData);
+      
+      // Add Arabic translations if provided
+      const translationPromises = [];
+      
+      if (nameAr.trim()) {
+        translationPromises.push(
+          axiosInstance.post('/translation/add', {
+            key: name.trim(),
+            value: nameAr.trim(),
+            language: 'ar'
+          })
+        );
+      }
+      
+      if (descriptionAr.trim() && description.trim()) {
+        translationPromises.push(
+          axiosInstance.post('/translation/add', {
+            key: description.trim(),
+            value: descriptionAr.trim(),
+            language: 'ar'
+          })
+        );
+      }
+      
+      // Wait for all translations to be added
+      if (translationPromises.length > 0) {
+        await Promise.all(translationPromises);
+      }
+      
+      navigate("/items");
+    } catch (error) {
+      console.error('Error creating item or adding translations:', error);
+    }
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -167,6 +201,44 @@ function AddItem() {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             placeholder="Enter item description"
             required
+          />
+        </div>
+
+        {/* Arabic Name */}
+        <div className="mb-4">
+          <label
+            htmlFor="nameAr"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Arabic Name (Optional)
+          </label>
+          <input
+            type="text"
+            id="nameAr"
+            value={nameAr}
+            onChange={(e) => setNameAr(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="Enter Arabic item name"
+            dir="rtl"
+          />
+        </div>
+
+        {/* Arabic Description */}
+        <div className="mb-4">
+          <label
+            htmlFor="descriptionAr"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Arabic Description (Optional)
+          </label>
+          <textarea
+            id="descriptionAr"
+            value={descriptionAr}
+            onChange={(e) => setDescriptionAr(e.target.value)}
+            rows={4}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="Enter Arabic item description"
+            dir="rtl"
           />
         </div>
 

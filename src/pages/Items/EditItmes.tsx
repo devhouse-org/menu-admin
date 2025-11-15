@@ -36,6 +36,8 @@ function EditItem() {
   // Initialize state with fetched item data
   const [name, setName] = useState<string | null>(null);
   const [description, setDescription] = useState<string | null>(null);
+  const [nameAr, setNameAr] = useState<string | null>(null);
+  const [descriptionAr, setDescriptionAr] = useState<string | null>(null);
   const [price, setPrice] = useState<number | null>(null);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [uploadImage, setUploadImage] = useState<File | null>(null);
@@ -47,6 +49,10 @@ function EditItem() {
     if (itemData) {
       setName(itemData.name);
       setDescription(itemData.description);
+      // Translations are stored in the translation files, not in the item data
+      // So we initialize these as empty - user can add translations if needed
+      setNameAr(null);
+      setDescriptionAr(null);
       setPrice(itemData.price);
       setUploadImageUrl(itemData.image);
       setCategoryId(itemData.categoryId);
@@ -98,9 +104,6 @@ function EditItem() {
     mutationFn: (data: any) => {
       return axiosInstance.put(`/item/${itemId}`, data);
     },
-    onSuccess: () => {
-      navigate("/items");
-    },
   });
 
   const handleSubmit = async (e: FormEvent) => {
@@ -120,7 +123,42 @@ function EditItem() {
       image: imageBase64,
     };
 
-    mutation.mutate(data);
+    try {
+      // Update the item first
+      await mutation.mutateAsync(data);
+      
+      // Add Arabic translations if provided
+      const translationPromises = [];
+      
+      if (nameAr?.trim()) {
+        translationPromises.push(
+          axiosInstance.post('/translation/add', {
+            key: name?.trim() || '',
+            value: nameAr.trim(),
+            language: 'ar'
+          })
+        );
+      }
+      
+      if (descriptionAr?.trim() && description?.trim()) {
+        translationPromises.push(
+          axiosInstance.post('/translation/add', {
+            key: description.trim(),
+            value: descriptionAr.trim(),
+            language: 'ar'
+          })
+        );
+      }
+      
+      // Wait for all translations to be added
+      if (translationPromises.length > 0) {
+        await Promise.all(translationPromises);
+      }
+      
+      navigate("/items");
+    } catch (error) {
+      console.error('Error updating item or adding translations:', error);
+    }
   };
 
   if (isLoadingRestaurants || isLoadingItem) {
@@ -192,6 +230,44 @@ function EditItem() {
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             placeholder="Enter item description"
             required
+          />
+        </div>
+
+        {/* Arabic Name */}
+        <div className="mb-4">
+          <label
+            htmlFor="nameAr"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Arabic Name (Optional)
+          </label>
+          <input
+            type="text"
+            id="nameAr"
+            value={nameAr || ""}
+            onChange={(e) => setNameAr(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="Enter Arabic item name"
+            dir="rtl"
+          />
+        </div>
+
+        {/* Arabic Description */}
+        <div className="mb-4">
+          <label
+            htmlFor="descriptionAr"
+            className="block text-sm font-medium text-gray-700"
+          >
+            Arabic Description (Optional)
+          </label>
+          <textarea
+            id="descriptionAr"
+            value={descriptionAr || ""}
+            onChange={(e) => setDescriptionAr(e.target.value)}
+            rows={4}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="Enter Arabic item description"
+            dir="rtl"
           />
         </div>
 
