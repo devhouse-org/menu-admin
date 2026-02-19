@@ -1,24 +1,26 @@
 import axiosInstance from "@/axiosInstance";
 import Spinner from "@/components/Spinner";
-import IconSelector from "@/components/IconSelector"; // Import IconSelector
+import IconSelector from "@/components/IconSelector";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 type categoryType = {
-  name: string | null;
-  restaurantId: string | null;
-  icon?: string | null; // Use a base64 encoded string instead of a File
+  name: string;
+  restaurantId: string;
+  icon?: string;
+  orderNumber?: number;
 };
-
-
 
 function EditCategory() {
   const location = useLocation();
   const record = location.state;
-  const [name, setName] = useState<string | null>(record.name);
-  const [restaurantId, setRestaurantId] = useState<string | null>(record.restaurantId);
-  const [icon, setIcon] = useState<string | null>(record.icon || null); // Use icon state
+  const [name, setName] = useState<string>(record.name || "");
+  const [restaurantId, setRestaurantId] = useState<string>(record.restaurantId || "");
+  const [icon, setIcon] = useState<string | null>(record.icon || null);
+  const [orderNumber, setOrderNumber] = useState<string>(
+    record.orderNumber != null ? String(record.orderNumber) : ""
+  );
   const { categoryId } = useParams();
   const navigate = useNavigate();
 
@@ -40,7 +42,7 @@ function EditCategory() {
       return axiosInstance.put(`/category/${categoryId}`, newEdit);
     },
     onSuccess: () => {
-      navigate("/categories"); // Navigate back to the category list after successful edit
+      navigate("/categories");
     },
   });
 
@@ -50,14 +52,23 @@ function EditCategory() {
     const newEdit: categoryType = {
       name,
       restaurantId,
-      icon: icon || null,
     };
+
+    // Only include icon if selected
+    if (icon) {
+      newEdit.icon = icon;
+    }
+
+    // Only include orderNumber if provided
+    if (orderNumber !== "") {
+      newEdit.orderNumber = Number(orderNumber);
+    }
 
     mutation.mutate(newEdit);
   };
 
   const handleIconSelect = (selectedIcon: string) => {
-    setIcon(selectedIcon); // Set the selected icon
+    setIcon(selectedIcon);
   };
 
   if (isLoading) {
@@ -86,7 +97,7 @@ function EditCategory() {
           <input
             type="text"
             id="name"
-            value={name || ""}
+            value={name}
             onChange={(e) => setName(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             placeholder="Enter category name"
@@ -104,7 +115,7 @@ function EditCategory() {
           </label>
           <select
             id="restaurantId"
-            value={restaurantId || ""}
+            value={restaurantId}
             onChange={(e) => setRestaurantId(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
             required
@@ -128,17 +139,43 @@ function EditCategory() {
 
         {/* Icon Selector */}
         <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Select Icon (Optional)
+          </label>
+          <div className="flex items-center gap-2">
+            <IconSelector
+              onIconSelect={handleIconSelect}
+              initialIcon={icon ?? undefined}
+            />
+            {icon && (
+              <button
+                type="button"
+                onClick={() => setIcon(null)}
+                className="text-sm text-red-500 hover:text-red-700 underline"
+              >
+                Clear Icon
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Order Number */}
+        <div className="mb-4">
           <label
-            htmlFor="icon"
+            htmlFor="orderNumber"
             className="block text-sm font-medium text-gray-700"
           >
-            Select Icon
+            Order Number
           </label>
-          <IconSelector
-            onIconSelect={handleIconSelect}
-            initialIcon={icon ?? undefined} // Convert null to undefined
+          <input
+            type="number"
+            id="orderNumber"
+            value={orderNumber}
+            onChange={(e) => setOrderNumber(e.target.value)}
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+            placeholder="Category display order"
+            min={1}
           />
-
         </div>
 
         {/* Submit Button */}

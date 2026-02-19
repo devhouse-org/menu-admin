@@ -7,14 +7,16 @@ import { useNavigate } from "react-router-dom";
 
 type CreateCategoryDto = {
   name: string;
-  icon?: string | null;
+  icon?: string;
   restaurantId: string;
+  orderNumber?: number;
 };
 
 function AddCategory() {
   const [name, setName] = useState<string>("");
   const [restaurantId, setRestaurantId] = useState<string>("");
   const [icon, setIcon] = useState<string | null>(null);
+  const [orderNumber, setOrderNumber] = useState<string>("");
   const navigate = useNavigate();
 
   // Fetch restaurants from the server
@@ -30,12 +32,26 @@ function AddCategory() {
     },
   });
 
+  // Fetch existing categories for selected restaurant to show count
+  const { data: existingCategories } = useQuery({
+    queryKey: ["categories-for-order", restaurantId],
+    queryFn: async () => {
+      const response = await axiosInstance.get(
+        `/category?page=1&restaurantId=${restaurantId}`
+      );
+      return response.data;
+    },
+    enabled: !!restaurantId,
+  });
+
+  const totalCategories = existingCategories?.totalItems ?? 0;
+
   const mutation = useMutation({
     mutationFn: (newCategory: CreateCategoryDto) => {
       return axiosInstance.post(`/category`, newCategory);
     },
     onSuccess: () => {
-      navigate("/categories"); // Navigate back to the item list after successful addition
+      navigate("/categories");
     },
   });
 
@@ -45,14 +61,25 @@ function AddCategory() {
     const newCategory: CreateCategoryDto = {
       name,
       restaurantId,
-      icon: icon || null,
     };
+
+    // Only include icon if one was selected
+    if (icon) {
+      newCategory.icon = icon;
+    }
+
+    // Only include orderNumber if provided
+    if (orderNumber !== "") {
+      newCategory.orderNumber = Number(orderNumber);
+    }
 
     mutation.mutate(newCategory);
   };
+
   const handleIconSelect = (title: string) => {
-    setIcon(title)
+    setIcon(title);
   };
+
   if (isLoading) {
     return (
       <div className="w-full h-screen flex items-center justify-center">
@@ -119,26 +146,51 @@ function AddCategory() {
           </select>
         </div>
 
-        {/* Upload Image */}
-        {/* <div className="mb-4">
+        {/* Icon Selector */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Select Icon (Optional)
+          </label>
+          <div className="flex items-center gap-2">
+            <IconSelector onIconSelect={handleIconSelect} />
+            {icon && (
+              <button
+                type="button"
+                onClick={() => setIcon(null)}
+                className="text-sm text-red-500 hover:text-red-700 underline"
+              >
+                Clear Icon
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Order Number */}
+        <div className="mb-4">
           <label
-            htmlFor="upload-image"
+            htmlFor="orderNumber"
             className="block text-sm font-medium text-gray-700"
           >
-            Upload Image
+            Order Number (Optional)
           </label>
           <input
-            type="file"
-            id="upload-image"
-            onChange={(e) => {
-              if (e.target.files && e.target.files.length > 0) {
-                setUploadImage(e.target.files[0]);
-              }
-            }}
+            type="number"
+            id="orderNumber"
+            value={orderNumber}
+            onChange={(e) => setOrderNumber(e.target.value)}
             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="Upload an image"
+            placeholder="Leave empty to add at the end"
+            min={1}
           />
-        </div> */}
+          {restaurantId && (
+            <p className="mt-1 text-xs text-gray-500">
+              Current categories in this restaurant: {totalCategories}.
+              {orderNumber
+                ? ` This category will be placed at position ${orderNumber}. Existing categories from this position onward will shift.`
+                : ` Will be added at position ${totalCategories + 1}.`}
+            </p>
+          )}
+        </div>
 
         {/* Submit Button */}
         <div className="flex justify-end">
@@ -150,7 +202,6 @@ function AddCategory() {
             {mutation.isPending ? "Adding... " : "Add Category"}
           </button>
         </div>
-        <IconSelector onIconSelect={handleIconSelect} />
       </form>
     </div>
   );
