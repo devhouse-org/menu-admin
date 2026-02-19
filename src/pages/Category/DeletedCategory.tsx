@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
-import { RotateCw, SquarePen, Trash2 } from "lucide-react";
+
+import { RotateCw, Trash2 } from "lucide-react";
 import Popup from "@/components/Popup";
-import { Link } from "react-router-dom";
 import Spinner from "@/components/Spinner";
 import { highlightText } from "../../utils/utils";
 import Pagination from "@/components/Pagination"; // Import the Pagination component
@@ -73,7 +72,10 @@ const DeletedCategories = () => {
       queryClient.invalidateQueries({
         queryKey: ["findAll-deleted-categories"],
       });
-      setShowRestorePopup(false); // Close the restore popup after success
+      queryClient.invalidateQueries({
+        queryKey: ["categories"],
+      });
+      setShowRestorePopup(false);
     },
   });
 
@@ -87,7 +89,10 @@ const DeletedCategories = () => {
     onSuccess: () => {
       refetch();
       queryClient.invalidateQueries({
-        queryKey: ["restore-categories"],
+        queryKey: ["findAll-deleted-categories"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["categories"],
       });
       setShowRestoreManyPopup(false); // Close the restore popup after success
     },
@@ -186,7 +191,7 @@ const DeletedCategories = () => {
     category.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const totalPages = Math.ceil(categoriesData?.totalItems / itemsPerPage);
+  const totalPages = Math.ceil((categoriesData?.totalItems || 0) / itemsPerPage);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
