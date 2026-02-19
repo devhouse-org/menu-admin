@@ -1,34 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { Plus, RotateCw, SquarePen, Trash2 } from "lucide-react";
 import Popup from "@/components/Popup";
 import { Link } from "react-router-dom";
-import Pagination from "../../components/Pagination";
 import Spinner from "@/components/Spinner";
 import { highlightText } from "@/utils/utils";
 import axiosInstance from "@/axiosInstance";
 import exportCSVFile from "json-to-csv-export";
 import { DropdownMenuDemo } from "@/components/DropdownMenu";
 import { Tooltip as ReactTooltip } from "react-tooltip";
-import "react-tooltip/dist/react-tooltip.css"; // Importing the styles
-import { getIconByTitle } from "@/utils/data";
+import "react-tooltip/dist/react-tooltip.css";
 
 type categoryReviewType = {
   id: string;
   name: string;
 };
-
-interface DataCategory {
-  createdAt: String;
-  deleted: boolean;
-  icon: String;
-  id: String;
-  name: String;
-  orderNumber: String;
-  restaurantId: String;
-  updatedAt: String;
-}
 
 const flattenObject = (
   obj: Record<string, any>,
@@ -48,26 +34,16 @@ const flattenObject = (
   return category;
 };
 
-// Extract headers from the data
-const extractHeaders = (data: DataCategory[]): string[] => {
-  const flattenedData = data.map((item) => flattenObject(item));
-  const headers = Array.from(new Set(flattenedData.flatMap(Object.keys)));
-  return headers;
-};
-
 const Category = () => {
   const [showPopup, setShowPopup] = useState(false);
-  const [showDeleteManyPopup, setShowDeleteManyPopup] = useState(false); // State to manage popup visibility
+  const [showDeleteManyPopup, setShowDeleteManyPopup] = useState(false);
   const [selectedCategory, setSelectedCategory] =
     useState<categoryReviewType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedRestaurant, setSelectedRestaurant] = useState(""); // State to manage selected restaurant
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]); // State to manage selected items for checkbox selection
-  const itemsPerPage = 10;
+  const [selectedRestaurant, setSelectedRestaurant] = useState("");
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
-  const [headers, setHeaders] = useState<string[]>([]);
 
   // Fetch restaurants
   const { data: restaurants } = useQuery({
@@ -78,7 +54,7 @@ const Category = () => {
     },
   });
 
-  // Fetch categories based on selected restaurant
+  // Fetch ALL categories (no pagination)
   const {
     data: categoryData,
     isLoading,
@@ -89,35 +65,33 @@ const Category = () => {
     queryKey: ["categories", selectedRestaurant],
     queryFn: async () => {
       const params = new URLSearchParams();
+      params.append("all", "true");
       if (selectedRestaurant) {
         params.append("restaurantId", selectedRestaurant);
       }
       const category = await axiosInstance.get(`/category`, { params });
       return category.data;
     },
-    refetchOnWindowFocus: false, // Prevent automatic refetching on window focus if not needed
+    refetchOnWindowFocus: false,
   });
 
-const handleExport = () => {
+  const handleExport = () => {
     const flattenedData = categoryData.items.map((item: any) =>
       flattenObject(item)
     );
-
     const dataToConvert = {
       data: flattenedData,
       filename: "categories",
       delimiter: ",",
-      headers,
     };
-
     exportCSVFile(dataToConvert);
   };
 
   const handleReload = async () => {
     await queryClient.invalidateQueries({
-      queryKey: ["categories", selectedRestaurant],
+      queryKey: ["categories"],
     });
-    refetch(); // Optionally trigger refetch after invalidation
+    refetch();
   };
 
   const mutation = useMutation({
@@ -130,6 +104,7 @@ const handleExport = () => {
       setShowPopup(false);
     },
   });
+
   const deleteMutation = useMutation({
     mutationFn: (selectedItemsIds: string[]) => {
       return axiosInstance.put(`/category/soft-delete-many`, {
@@ -139,7 +114,6 @@ const handleExport = () => {
     onSuccess: () => {
       refetch();
       setShowDeleteManyPopup(false);
-      return "Items deleted successfully";
     },
   });
 
@@ -160,47 +134,41 @@ const handleExport = () => {
     }
   };
 
+  // Filter by search query
+  const allItems = categoryData?.items || [];
+  const filteredData = searchQuery
+    ? allItems.filter((item: any) =>
+      item?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    : allItems;
+
   const handleSelectAll = () => {
-    if (selectedItems.length === currentData.length) {
+    if (selectedItems.length === filteredData.length) {
       setSelectedItems([]);
     } else {
-      const allIds = currentData.map((item: any) => item.id);
+      const allIds = filteredData.map((item: any) => item.id);
       setSelectedItems(allIds);
     }
   };
 
   const handleSelectItem = (id: string) => {
-    setSelectedItems((prevSelectedItems) =>
-      prevSelectedItems.includes(id)
-        ? prevSelectedItems.filter((itemId) => itemId !== id)
-        : [...prevSelectedItems, id]
+    setSelectedItems((prev) =>
+      prev.includes(id)
+        ? prev.filter((itemId) => itemId !== id)
+        : [...prev, id]
     );
   };
 
-  // Filter data based on the search query
-  const filteredData =
-    categoryData?.items.filter((item: any) =>
-      item?.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
-
-  // Calculate total pages and slice data for the current page
-  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
-  const currentData = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-    setSelectedItems([]);
-  };
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedRestaurant, searchQuery]);
-
   const handleDeleteMany = () => {
     setShowDeleteManyPopup(true);
+  };
+
+  // Helper to get restaurant name by id
+  const getRestaurantName = (restaurantId: string) => {
+    const restaurant = restaurants?.items?.find(
+      (r: any) => r.id === restaurantId
+    );
+    return restaurant?.name || "N/A";
   };
 
   if (isLoading) {
@@ -214,9 +182,9 @@ const handleExport = () => {
   if (isError) {
     return <div>Error</div>;
   }
+
   return (
     <div className="relative overflow-x-auto sm:rounded-lg w-full mx-6 md:mx-0 scrollbar-hide">
-      {/* Tooltip initialization */}
       <ReactTooltip id="delete-many-tooltip" place="top" />
       <ReactTooltip id="reload-tooltip" place="top" />
       <ReactTooltip id="add-category-tooltip" place="top" />
@@ -271,7 +239,7 @@ const handleExport = () => {
           {selectedItems.length > 0 && (
             <button
               type="button"
-              className="text-white w-10 h-10 xl:w-auto bg-red-600 hover:bg-red-700 focus:outline-none  font-medium rounded-lg  px-3 py-2.5"
+              className="text-white w-10 h-10 xl:w-auto bg-red-600 hover:bg-red-700 focus:outline-none font-medium rounded-lg px-3 py-2.5"
               onClick={handleDeleteMany}
               data-tooltip-id="delete-many-tooltip"
               data-tooltip-content="Delete selected categories"
@@ -287,7 +255,8 @@ const handleExport = () => {
             type="button"
             disabled={isRefetching}
             className="text-white w-10 h-10 xl:w-auto bg-gray-800 text-sm hover:bg-gray-900 font-medium rounded-lg py-2.5 px-3 disabled:animate-pulse disabled:bg-gray-600"
-            onClick={handleReload} // Updated to handleReload            data-tooltip-id="reload-tooltip"
+            onClick={handleReload}
+            data-tooltip-id="reload-tooltip"
             data-tooltip-content="Reload categories"
           >
             <span className="hidden xl:flex items-center gap-1">
@@ -341,100 +310,95 @@ const handleExport = () => {
         </div>
       </div>
 
-      {currentData.length === 0 ? (
+      {filteredData.length === 0 ? (
         <div className="text-center py-10">
           <p className="text-gray-500">No categories found.</p>
         </div>
       ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left rtl:text-right text-gray-500">
-              <thead className="text-xs text-gray-700 uppercase bg-gray-50">
-                <tr>
-                  <th scope="col" className="px-6 py-3 w-4">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left rtl:text-right text-gray-500">
+            <thead className="text-xs text-gray-700 uppercase bg-gray-50">
+              <tr>
+                <th scope="col" className="px-6 py-3 w-4">
+                  <input
+                    type="checkbox"
+                    checked={
+                      selectedItems.length === filteredData.length &&
+                      filteredData.length > 0
+                    }
+                    onChange={handleSelectAll}
+                  />
+                </th>
+                <th scope="col" className="px-6 py-3 w-4">
+                  #
+                </th>
+                <th scope="col" className="px-6 py-3 w-4">
+                  Name
+                </th>
+                <th scope="col" className="px-6 py-3 w-4">
+                  Icon
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Items No.
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Order
+                </th>
+                <th scope="col" className="px-6 py-3">
+                  Restaurant
+                </th>
+                <th scope="col" className="px-6 py-3"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredData.map((item: any, index: number) => (
+                <tr
+                  key={item.id}
+                  className="bg-white border-b hover:bg-gray-50"
+                >
+                  <td className="px-6 py-4">
                     <input
                       type="checkbox"
-                      checked={selectedItems.length === currentData.length}
-                      onChange={handleSelectAll}
+                      checked={selectedItems.includes(item.id)}
+                      onChange={() => handleSelectItem(item.id)}
                     />
-                  </th>
-                  <th scope="col" className="px-6 py-3 w-4">
-                    #
-                  </th>
-                  <th scope="col" className="px-6 py-3 w-4">
-                    Name
-                  </th>
-                  <th scope="col" className="px-6 py-3 w-4">
-                    Icon
-                  </th>
-                  <th scope="col" className="px-6 py-3">
-                    Items No.
-                  </th>
-                  <th scope="col" className="px-6 py-3">
-                    Restaurant
-                  </th>
-                  <th scope="col" className="px-6 py-3"></th>
+                  </td>
+                  <td className="px-6 py-4">{index + 1}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                    {highlightText(item?.name || "", searchQuery)}
+                  </td>
+                  <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
+                    {item?.icon || "—"}
+                  </td>
+                  <td className="px-6 py-4">{item?._count?.items ?? 0}</td>
+                  <td className="px-6 py-4">{item?.orderNumber ?? "—"}</td>
+                  <td className="px-6 py-4">
+                    {getRestaurantName(item?.restaurantId)}
+                  </td>
+                  <td className="px-6 py-4 flex gap-x-4">
+                    <Link
+                      to={`/categories/edit/${item.id}`}
+                      state={item}
+                      className="font-medium text-blue-600"
+                      data-tooltip-id="edit-category-tooltip"
+                      data-tooltip-content="Edit category"
+                    >
+                      <SquarePen />
+                    </Link>
+                    <button
+                      className="font-medium text-red-600"
+                      onClick={() => handleDeleteClick(item)}
+                      data-tooltip-id="delete-category-tooltip"
+                      data-tooltip-content="Delete category"
+                    >
+                      <Trash2 />
+                    </button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {currentData.map((item: any, index: number) => (
-                  <tr
-                    key={item.id}
-                    className="bg-white border-b hover:bg-gray-50"
-                  >
-                    <td className="px-6 py-4">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.includes(item.id)}
-                        onChange={() => handleSelectItem(item.id)}
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      {(currentPage - 1) * itemsPerPage + index + 1}
-                    </td>
-                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                      {highlightText(item?.name || "", searchQuery)}
-                    </td>
-                    <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                      {item?.icon}
-                    </td>
-                    <td className="px-6 py-4">{item?.items?.length || 0}</td>
-                    <td className="px-6 py-4">{item?.name || "N/A"}</td>
-                    <td className="px-6 py-4 flex gap-x-4">
-                      <Link
-                        to={`/categories/edit/${item.id}`}
-                        state={item}
-                        className="font-medium text-blue-600"
-                        data-tooltip-id="edit-category-tooltip"
-                        data-tooltip-content="Edit category"
-                      >
-                        <SquarePen />
-                      </Link>
-                      <button
-                        className="font-medium text-red-600"
-                        onClick={() => handleDeleteClick(item)}
-                        data-tooltip-id="delete-category-tooltip"
-                        data-tooltip-content="Delete category"
-                      >
-                        <Trash2 />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center mt-10">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={handlePageChange}
-              />
-            </div>
-          )}
-        </>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {showDeleteManyPopup && (
