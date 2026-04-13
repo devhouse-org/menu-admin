@@ -66,9 +66,20 @@ const Item = () => {
   const [showDeleteManyPopup, setShowDeleteManyPopup] = useState(false); // State to manage popup visibility
   const [selectedItem, setSelectedItem] = useState<itemReviewType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedRestaurant, setSelectedRestaurant] = useState("");
-  const [selectedItems, setSelectedItems] = useState<string[]>([]); // State to manage selected items for checkbox selection
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [headers, setHeaders] = useState<string[]>();
   const itemsPerPage = 10;
@@ -83,16 +94,18 @@ const Item = () => {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ["items", selectedCategory, selectedRestaurant],
+    queryKey: ["items", selectedCategory, selectedRestaurant, debouncedSearchQuery, currentPage],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (selectedCategory) params.append("categoryId", selectedCategory);
       if (selectedRestaurant) params.append("restaurantId", selectedRestaurant);
+      if (debouncedSearchQuery) params.append("search", debouncedSearchQuery);
+      params.append("page", String(currentPage));
 
       const item = await axiosInstance.get(`/item`, { params });
       return item.data;
     },
-    refetchOnWindowFocus: false, // Prevent automatic refetching on window focus if not needed
+    refetchOnWindowFocus: false,
   });
   
   const handleExport = () => {
@@ -168,22 +181,14 @@ const Item = () => {
     },
   });
 
-  // Filter data based on search query
-  const filteredData = itemsData?.items?.filter((item: itemReviewType) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // Server-side data — use directly from API response
+  const currentData = itemsData?.items ?? [];
+  const totalPages = Math.ceil((itemsData?.totalItems ?? 0) / itemsPerPage);
 
-  // Pagination based on filtered data
-  const currentData = filteredData?.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-  const totalPages = Math.ceil(filteredData?.length / itemsPerPage);
-
-  // Reset the current page to 1 when filters change
+  // Reset the current page to 1 when filters or search change
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, selectedRestaurant, searchQuery]);
+  }, [selectedCategory, selectedRestaurant, debouncedSearchQuery]);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);

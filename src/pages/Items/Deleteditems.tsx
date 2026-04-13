@@ -25,6 +25,17 @@ const DeletedItems = () => {
   const [showRestoreManyPopup, setShowRestoreManyPopup] = useState(false);
   const [selectedItem, setSelectedItem] = useState<itemReviewType | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [searchQuery]);
+
   const [selectedCategory, setSelectedCategory] = useState("");
   const [selectedRestaurant, setSelectedRestaurant] = useState("");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
@@ -46,12 +57,14 @@ const DeletedItems = () => {
       currentPage,
       selectedCategory,
       selectedRestaurant,
+      debouncedSearchQuery,
     ],
     queryFn: async () => {
       const params = new URLSearchParams();
       params.append("page", String(currentPage));
       if (selectedCategory) params.append("categoryId", selectedCategory);
       if (selectedRestaurant) params.append("restaurantId", selectedRestaurant);
+      if (debouncedSearchQuery) params.append("search", debouncedSearchQuery);
 
       // Fetching deleted items from the server
       const item = await axiosInstance.get(`/item/findAll-deleted`, { params });
@@ -193,11 +206,13 @@ const DeletedItems = () => {
     }
   };
 
-  const filteredData = itemsData?.items?.filter((item: itemReviewType) =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredData = itemsData?.items ?? [];
+  const totalPages = Math.ceil((itemsData?.totalItems ?? 0) / itemsPerPage);
 
-  const totalPages = Math.ceil(itemsData?.totalItems / itemsPerPage);
+  // Reset the current page to 1 when filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, selectedRestaurant, debouncedSearchQuery]);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
