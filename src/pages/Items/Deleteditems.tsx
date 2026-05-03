@@ -78,7 +78,7 @@ const DeletedItems = () => {
     queryFn: async () => {
       if (!selectedRestaurant) return [];
       const res = await axiosInstance.get(
-        `/category?restaurantId=${selectedRestaurant}`
+        `/category?restaurantId=${selectedRestaurant}&all=true`
       );
       return res.data;
     },

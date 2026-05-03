@@ -78,11 +78,11 @@ function EditItem() {
     queryFn: async () => {
       if (restaurantId) {
         const response = await axiosInstance.get(
-          `/category?restaurantId=${restaurantId}&page=all`
+          `/category?restaurantId=${restaurantId}&all=true`
         );
         return response.data;
       } else {
-        const response = await axiosInstance.get(`/category?page=all`);
+        const response = await axiosInstance.get(`/category?all=true`);
         return response.data;
       }
     },

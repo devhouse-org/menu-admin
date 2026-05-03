@@ -39,7 +39,7 @@ function AddItem() {
     isFetchingNextPage,
     status,
   } = useInfiniteQuery({
-    queryKey: ["categories", restaurantId],
+    queryKey: ["categories-infinite", restaurantId],
     queryFn: async ({ pageParam = 1 }) => {
       if (!restaurantId) return [];
       const response = await axiosInstance.get(
@@ -223,8 +223,8 @@ function AddItem() {
                 ? "Loading categories..."
                 : "Select a category"}
             </option>
-            {categories && categories.pages.length > 0 ? (
-              categories.pages.flatMap((page: any) => page.items).map((category: any) => (
+            {categories?.pages?.length > 0 ? (
+              categories.pages.flatMap((page: any) => page?.items || []).map((category: any) => (
                 <option key={category.id} value={category.id}>
                   {category.name}
                 </option>
