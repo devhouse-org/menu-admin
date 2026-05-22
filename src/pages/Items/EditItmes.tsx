@@ -44,44 +44,19 @@ function EditItem() {
   const [uploadImageUrl, setUploadImageUrl] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
 
-  // Effect to set state when itemData is fetched
+  // Effect to set state when itemData is fetched.
+  // Arabic name/description are now read directly from the item record
+  // (no /locale lookups) — eliminating the collision bug.
   useEffect(() => {
     if (itemData) {
-      setName(itemData.name);
-      setDescription(itemData.description);
+      setName(itemData.name ?? null);
+      setDescription(itemData.description ?? null);
+      setNameAr(itemData.nameAr ?? null);
+      setDescriptionAr(itemData.descriptionAr ?? null);
       setPrice(itemData.price);
       setUploadImageUrl(itemData.image);
       setCategoryId(itemData.categoryId);
-      setRestaurantId(itemData.category.restaurantId);
-      
-      // Fetch existing Arabic translations
-      const fetchTranslations = async () => {
-        try {
-          // Fetch name translation
-          if (itemData.name) {
-            const nameResponse = await axiosInstance.get('/locale/translation-value', {
-              params: { key: itemData.name, lang: 'ar' }
-            });
-            if (nameResponse.data.value) {
-              setNameAr(nameResponse.data.value);
-            }
-          }
-          
-          // Fetch description translation
-          if (itemData.description) {
-            const descResponse = await axiosInstance.get('/locale/translation-value', {
-              params: { key: itemData.description, lang: 'ar' }
-            });
-            if (descResponse.data.value) {
-              setDescriptionAr(descResponse.data.value);
-            }
-          }
-        } catch (error) {
-          console.log('No existing translations found or error fetching:', error);
-        }
-      };
-      
-      fetchTranslations();
+      setRestaurantId(itemData.category?.restaurantId ?? null);
     }
   }, [itemData]);
 
@@ -134,55 +109,26 @@ function EditItem() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    let imageBase64 = uploadImageUrl;
-
+    let imageBase64: string | null = uploadImageUrl;
     if (uploadImage) {
       imageBase64 = await toBase64(uploadImage);
     }
 
     const data = {
       name: name?.trim() || "",
+      nameAr: nameAr?.trim() || null,
       description: description?.trim() || "",
+      descriptionAr: descriptionAr?.trim() || null,
       price: price || 0,
       categoryId: categoryId || "",
       image: imageBase64,
     };
 
     try {
-      // Update the item first
       await mutation.mutateAsync(data);
-      
-      // Add Arabic translations if provided
-      const translationPromises = [];
-      
-      if (nameAr?.trim()) {
-        translationPromises.push(
-          axiosInstance.post('/translation/add', {
-            key: name?.trim() || '',
-            value: nameAr.trim(),
-            language: 'ar'
-          })
-        );
-      }
-      
-      if (descriptionAr?.trim() && description?.trim()) {
-        translationPromises.push(
-          axiosInstance.post('/translation/add', {
-            key: description.trim(),
-            value: descriptionAr.trim(),
-            language: 'ar'
-          })
-        );
-      }
-      
-      // Wait for all translations to be added
-      if (translationPromises.length > 0) {
-        await Promise.all(translationPromises);
-      }
-      
       navigate("/items");
     } catch (error) {
-      console.error('Error updating item or adding translations:', error);
+      console.error('Error updating item:', error);
     }
   };
 

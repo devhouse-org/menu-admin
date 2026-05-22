@@ -89,19 +89,21 @@ const DeletedRatings = () => {
     },
   });
 
-  // Handle bulk delete operation
+  // Handle bulk delete operation — was copy-pasted from the Restaurants
+  // page and hit the wrong endpoint with the wrong body. Now points at
+  // the rating route with the standardized { data } payload.
   const deleteManyMutation = useMutation({
     mutationFn: (selectedItemsIds: string[]) => {
-      return axiosInstance.delete(`/restaurant/delete-many`, {
-        data: selectedItemsIds,
+      return axiosInstance.delete(`/rating/delete-many`, {
+        data: { data: selectedItemsIds },
       });
     },
     onSuccess: () => {
       refetch();
       setShowDeleteManyPopup(false);
-      setSelectedItems([]); // Clear selected items after successful deletion
+      setSelectedItems([]);
       queryClient.invalidateQueries({
-        queryKey: ["findAll-deleted-restaurants"],
+        queryKey: ["findAll-deleted-ratings"],
       });
     },
   });

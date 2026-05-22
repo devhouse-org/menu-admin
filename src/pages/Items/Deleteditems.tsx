@@ -135,11 +135,11 @@ const DeletedItems = () => {
     },
   });
 
-  // Handle bulk delete operation
+  // Handle bulk delete operation — standardized DeleteManyDto payload
   const deleteManyMutation = useMutation({
     mutationFn: (selectedItemsIds: string[]) => {
       return axiosInstance.delete(`/item/delete-many`, {
-        data: selectedItemsIds,
+        data: { data: selectedItemsIds },
       });
     },
     onSuccess: () => {

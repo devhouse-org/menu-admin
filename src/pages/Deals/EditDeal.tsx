@@ -38,7 +38,13 @@ function EditDeal() {
       setDiscount(deal.discount || "");
       setRestaurantId(deal.restaurantId);
       setPublished(deal.published);
-      setExpiresAt(new Date(deal.expiresAt).toISOString().slice(0, 16));
+      // Guard against null/undefined expiresAt — otherwise `new Date(null)`
+      // yields an "Invalid Date" whose toISOString() throws RangeError.
+      setExpiresAt(
+        deal.expiresAt
+          ? new Date(deal.expiresAt).toISOString().slice(0, 16)
+          : ""
+      );
       setImage(deal.image || "");
     }
   }, [deal]);

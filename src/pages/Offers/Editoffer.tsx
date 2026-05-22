@@ -10,9 +10,12 @@ const EditOffer = () => {
 
   const [title, setTitle] = useState(record?.title || ""); // Set initial values
   const [uploadImage, setUploadImage] = useState<File | null>(null);
-  const [uploadImageUrl, setUploadImageUrl] = useState<string | null>(
-    record?.image || ""
-  ); // Initial URL from the record
+  // `originalImage` holds the server-side base64 we received with the record.
+  // `previewUrl` is only for the <img> preview (may be a blob:URL).
+  // Storing them separately avoids the previous bug where the ephemeral
+  // blob:URL was persisted to the DB and the real image was lost.
+  const [originalImage] = useState<string | null>(record?.image || null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(record?.image || null);
   const [description, setDescription] = useState(record?.description || "");
 
   const { offerId } = useParams();
@@ -44,17 +47,18 @@ const EditOffer = () => {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
-    let base64Image = uploadImageUrl;
-    
-    // Convert uploaded image to base64 if a new image is selected
+    // If the user picked a new file, convert it to base64.
+    // Otherwise keep the original server-side image untouched —
+    // NEVER send the local `blob:` preview URL to the backend.
+    let imageToSend: string | null = originalImage;
     if (uploadImage) {
-      base64Image = await convertImageToBase64(uploadImage);
+      imageToSend = await convertImageToBase64(uploadImage);
     }
 
     const updatedOffer = {
       title: title || "",
       description: description || "",
-      image: base64Image || null, // Include base64 image string if available
+      image: imageToSend,
     };
 
     mutation.mutate(updatedOffer);
@@ -83,18 +87,18 @@ const EditOffer = () => {
           <label htmlFor="upload-image" className="block text-sm font-medium">
             Upload Image
           </label>
-          {uploadImageUrl && (
+          {previewUrl && (
             <div className="p-2">
-              <img width={100} src={uploadImageUrl} alt="Offer preview" />
+              <img width={100} src={previewUrl} alt="Offer preview" />
             </div>
           )}
           <input
             type="file"
             id="upload-image"
             onChange={(e) => {
-              if (e.target.files) {
+              if (e.target.files?.[0]) {
                 setUploadImage(e.target.files[0]);
-                setUploadImageUrl(URL.createObjectURL(e.target.files[0]));
+                setPreviewUrl(URL.createObjectURL(e.target.files[0]));
               }
             }}
             className="mt-1 block w-full p-2 border-gray-300 rounded-md"

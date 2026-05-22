@@ -99,11 +99,11 @@ const DeletedRestaurants = () => {
     },
   });
 
-  // Handle bulk delete operation
+  // Handle bulk delete operation — standardized to { data: string[] }
   const deleteManyMutation = useMutation({
     mutationFn: (selectedItemsIds: string[]) => {
       return axiosInstance.delete(`/restaurant/delete-many`, {
-        data: selectedItemsIds,
+        data: { data: selectedItemsIds },
       });
     },
     onSuccess: () => {

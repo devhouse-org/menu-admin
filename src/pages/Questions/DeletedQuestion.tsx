@@ -126,7 +126,9 @@ const DeletedQuestions = () => {
 
   const deleteManyMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      await axiosInstance.delete('/question/many', { data: { ids } });
+      // The endpoint is `/question/delete-many` (NOT `/question/many`),
+      // and the backend expects `{ data: string[] }` (DeleteManyDto).
+      await axiosInstance.delete('/question/delete-many', { data: { data: ids } });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["findAll-deleted-questions"] });
@@ -145,7 +147,8 @@ const DeletedQuestions = () => {
 
   const restoreManyMutation = useMutation({
     mutationFn: async (ids: string[]) => {
-      await axiosInstance.put('/question/restore-many', { ids });
+      // Standardized DeleteManyDto shape — `data` not `ids`.
+      await axiosInstance.put('/question/restore-many', { data: ids });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["findAll-deleted-questions"] });

@@ -128,8 +128,9 @@ const {
 
   const deleteManyMutation = useMutation({
     mutationFn: (selectedItemsIds: string[]) => {
+      // Standardized DeleteManyDto shape: { data: string[] }
       return axiosInstance.delete(`/category/delete-many`, {
-        data: selectedItemsIds,
+        data: { data: selectedItemsIds },
       });
     },
     onSuccess: () => {

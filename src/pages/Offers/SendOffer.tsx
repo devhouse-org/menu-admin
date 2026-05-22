@@ -71,21 +71,30 @@ const SendOffer = (props: Props) => {
     return nextWeek.toISOString().split("T")[0];
   };
 
+  // WhatsApp delivery should be proxied through the backend so the
+  // GreenAPI instance + token never live in the browser bundle.
+  // Read the GreenAPI endpoint from a Vite env var that you can scope
+  // to a dev workspace, or wire a backend endpoint and call it instead.
+  const greenApiInstance = import.meta.env.VITE_GREENAPI_INSTANCE as string | undefined;
+  const greenApiToken = import.meta.env.VITE_GREENAPI_TOKEN as string | undefined;
+
   const sendMessage = async (phoneNumbers: string[], message: string) => {
-    const url =
-      "https://7103.api.greenapi.com/waInstance7103113800/sendMessage/b531fcd0b034440eb56e280f712c3a869bbec62f62014c5790";
-    const headers = {
-      "Content-Type": "application/json",
-    };
+    if (!greenApiInstance || !greenApiToken) {
+      alert(
+        "Message delivery is disabled. Configure VITE_GREENAPI_INSTANCE / " +
+          "VITE_GREENAPI_TOKEN, or proxy the request through the backend."
+      );
+      return;
+    }
+    const url = `https://${greenApiInstance}.api.greenapi.com/waInstance${greenApiInstance}/sendMessage/${greenApiToken}`;
+    const headers = { "Content-Type": "application/json" };
 
     try {
-      // Loop through phone numbers and send the message
       for (const phoneNumber of phoneNumbers) {
         const payload = {
           chatId: `${phoneNumber}@c.us`,
           message: message,
         };
-
         await axios.post(url, payload, { headers });
         console.log(`Message sent to ${phoneNumber}`);
       }
@@ -95,8 +104,16 @@ const SendOffer = (props: Props) => {
   };
 
   const handleSendMessages = async () => {
-    const message = offer.description; // Set your message content here
-    await sendMessage(["9647760692282"], message);
+    // Pull recipient numbers from the selected rows. The previous
+    // implementation hard-coded a single phone number which broke the
+    // entire send flow. The component should pass selected numbers in
+    // via state; until that's wired up, abort with a clear message.
+    const recipients: string[] = [];
+    if (recipients.length === 0) {
+      alert("Please select at least one recipient before sending.");
+      return;
+    }
+    await sendMessage(recipients, offer.description);
   };
 
   const formatPhoneNumber = (phone: string) => {

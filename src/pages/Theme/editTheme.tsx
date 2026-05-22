@@ -1,31 +1,34 @@
 import axiosInstance from "@/axiosInstance";
 import Spinner from "@/components/Spinner";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { FormEvent, useState } from "react";
 import { useLocation, useParams } from "react-router-dom";
 
 type themeType = {
-  name: string | null;
   primary: string | null;
   secondary: string | null;
   bg: string | null;
 };
 function EditTheme() {
   const location = useLocation();
-  const record = location.state;
+  const record = location.state || {};
+  const navigate = useNavigate();
   const { themeId } = useParams();
-  const [name, setName] = useState<string | null>(record.name);
-  const [primary, setPrimary] = useState<string | null>(record.primary);
-  const [secondary, setSecondary] = useState<string | null>(record.secondary);
-  const [bg, setBg] = useState<string | null>(record.bg);
+  // NOTE: Theme model has no `name` column — that lives on Restaurant.
+  // Sending a `name` field crashes Prisma. We drop it from the payload.
+  const [primary, setPrimary] = useState<string | null>(record.primary ?? null);
+  const [secondary, setSecondary] = useState<string | null>(record.secondary ?? null);
+  const [bg, setBg] = useState<string | null>(record.bg ?? null);
   const mutation = useMutation({
     mutationFn: (newEdit: themeType) => {
       return axiosInstance.put(`/theme/${themeId}`, newEdit);
     },
+    onSuccess: () => navigate("/theme"),
   });
-  const handleSubmit = () => {
-    mutation.mutate({ name, primary, secondary, bg });
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    mutation.mutate({ primary, secondary, bg });
   };
 
   const { isLoading } = useQuery({
@@ -43,24 +46,6 @@ function EditTheme() {
       <h2 className="text-2xl font-bold mb-6">Edit Theme</h2>
 
       <form onSubmit={handleSubmit}>
-        {/* Restaurant Name */}
-        <div className="mb-4">
-          <label
-            htmlFor="name"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Restaurant Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            value={name || ""}
-            onChange={(e) => setName(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
-            placeholder="Enter restaurant name"
-          />
-        </div>
-
         {/* Primary Color */}
         <div className="mb-4">
           <label

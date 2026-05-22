@@ -111,8 +111,9 @@ const DeletedDeals = () => {
 
   const deleteManyMutation = useMutation({
     mutationFn: (selectedDealsIds: string[]) => {
+      // Backend expects { data: string[] } (standardized DeleteManyDto).
       return axiosInstance.delete(`/deal/delete-many`, {
-        data: selectedDealsIds,
+        data: { data: selectedDealsIds },
       });
     },
     onSuccess: () => {

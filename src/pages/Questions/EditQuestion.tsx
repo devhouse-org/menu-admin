@@ -11,21 +11,26 @@ type questionType = {
   enTitle: string | null;
   description: string | null;
   restaurantId: string | null;
-  answer: string | null;
+  answers: string | null;
 };
 
 function EditQuestion() {
   const location = useLocation();
-  const record = location.state;
+  const record = location.state || {};
   const [description, setDescription] = useState<string | null>(
-    record.description
+    record.description ?? null
   );
   const [restaurantId, setRestaurantId] = useState<string | null>(
-    record.restaurantId
+    record.restaurantId ?? null
   );
-  const [answer, setAnswer] = useState<string | null>(record.answer);
-  const [title, setTitle] = useState<string | null>(record.title);
-  const [enTitle, setEnTitle] = useState<string | null>(record.enTitle);
+  // The Prisma column is `answers` (plural). The previous code used
+  // `answer` here, so any edit submission silently dropped the field on
+  // the server and corrupted JSON data on subsequent saves.
+  const [answers, setAnswers] = useState<string | null>(
+    record.answers ?? null
+  );
+  const [title, setTitle] = useState<string | null>(record.title ?? null);
+  const [enTitle, setEnTitle] = useState<string | null>(record.enTitle ?? null);
   const { questionId } = useParams();
   const navigate = useNavigate();
 
@@ -60,8 +65,8 @@ function EditQuestion() {
   });
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault(); // Prevent page reload
-    mutation.mutate({ title, enTitle, description, restaurantId, answer });
+    e.preventDefault();
+    mutation.mutate({ title, enTitle, description, restaurantId, answers });
   };
 
   if (isLoading) {

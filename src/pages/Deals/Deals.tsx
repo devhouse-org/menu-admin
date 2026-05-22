@@ -133,7 +133,8 @@ const Deals = () => {
 
   const deleteManyMutation = useMutation({
     mutationFn: (selectedDealIds: string[]) => {
-      return axiosInstance.put(`/deal/soft-delete-many`, { ids: selectedDealIds });
+      // Backend expects { data: string[] } (standardized DeleteManyDto).
+      return axiosInstance.put(`/deal/soft-delete-many`, { data: selectedDealIds });
     },
     onSuccess: () => {
       refetch();

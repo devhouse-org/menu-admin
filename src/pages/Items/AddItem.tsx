@@ -71,53 +71,28 @@ function AddItem() {
     },
   });
 
-  // Consolidated handleSubmit function using FormData
+  // Consolidated handleSubmit — Arabic name/description are now persisted
+  // directly on the Item row (no separate /translation/add POSTs). This
+  // eliminates the previous collision bug where two translations could
+  // share the same English key and overwrite each other.
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     const itemData = {
       name: name.trim(),
+      nameAr: nameAr.trim() || undefined,
       description: description.trim(),
+      descriptionAr: descriptionAr.trim() || undefined,
       price: price,
       categoryId,
       image: base64Image,
     };
 
     try {
-      // Create the item first
       await mutation.mutateAsync(itemData);
-      
-      // Add Arabic translations if provided
-      const translationPromises = [];
-      
-      if (nameAr.trim()) {
-        translationPromises.push(
-          axiosInstance.post('/translation/add', {
-            key: name.trim(),
-            value: nameAr.trim(),
-            language: 'ar'
-          })
-        );
-      }
-      
-      if (descriptionAr.trim() && description.trim()) {
-        translationPromises.push(
-          axiosInstance.post('/translation/add', {
-            key: description.trim(),
-            value: descriptionAr.trim(),
-            language: 'ar'
-          })
-        );
-      }
-      
-      // Wait for all translations to be added
-      if (translationPromises.length > 0) {
-        await Promise.all(translationPromises);
-      }
-      
       navigate("/items");
     } catch (error) {
-      console.error('Error creating item or adding translations:', error);
+      console.error('Error creating item:', error);
     }
   };
 

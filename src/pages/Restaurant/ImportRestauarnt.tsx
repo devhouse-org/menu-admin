@@ -102,10 +102,14 @@ const ImportRestaurant = (props: Props) => {
         complete: (result) => {
           let data = result.data;
 
-          // Convert `deleted` field to boolean
+          // Convert `deleted` field to boolean.
+          // CSV cells come back as strings, so compare against the literal
+          // string "true" (case-insensitive). The previous `=== false`
+          // check was always false (string !== boolean) and silently
+          // marked every imported row as restored.
           data = data.map((item: any) => ({
             ...item,
-            deleted: item.deleted === false,
+            deleted: String(item.deleted).toLowerCase() === 'true',
           }));
 
           const csvHeads = result.meta.fields || [];

@@ -105,7 +105,10 @@ const Item = () => {
     refetch,
     isRefetching,
   } = useInfiniteQuery({
-    queryKey: ["items", selectedCategory, selectedRestaurant],
+    // Include `searchQuery` in the key so the cache refetches when the
+    // user types a new term, and forward it to the backend so the
+    // search covers the entire dataset (not just the loaded pages).
+    queryKey: ["items", selectedCategory, selectedRestaurant, searchQuery],
     queryFn: async ({ pageParam = 1 }) => {
       const params = new URLSearchParams();
       if (selectedRestaurant && selectedRestaurant !== "all") {
@@ -113,6 +116,9 @@ const Item = () => {
       }
       if (selectedCategory && selectedCategory !== "all") {
         params.append("categoryId", selectedCategory);
+      }
+      if (searchQuery.trim()) {
+        params.append("search", searchQuery.trim());
       }
       params.append("page", pageParam.toString());
 
@@ -225,13 +231,11 @@ const Item = () => {
     },
   });
 
-  // Update the filter data logic to work with infinite query data
+  // Server now handles filtering by `search` query — just flatten pages.
+  // We still need the locally-flattened list so the client-side
+  // pagination control below works against the loaded pages.
   const filteredData =
-    itemsData?.pages.flatMap((page) =>
-      page.items.filter((item: itemReviewType) =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    ) || [];
+    itemsData?.pages.flatMap((page) => page.items) || [];
 
   // Update pagination logic
   const currentData = filteredData.slice(

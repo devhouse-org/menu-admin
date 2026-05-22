@@ -31,10 +31,22 @@ const Addoffer = () => {
   }
 
   const generateDescription = async (title: string) => {
+    // The Gemini API key MUST NOT live in the browser bundle.
+    // Read it from a Vite env var so it can be omitted in production
+    // builds, or proxy the call through the backend.
+    const apiKey = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+    if (!apiKey) {
+      alert(
+        "AI generation is disabled. Set VITE_GEMINI_API_KEY in your env, " +
+          "or proxy this call through the backend."
+      );
+      return "";
+    }
+
     try {
       setLoading(true);
       const response = await axios.post(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyABPSSgejEC2icELd6_5fK5rLEKqbu5S88`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
         {
           contents: [
             {
