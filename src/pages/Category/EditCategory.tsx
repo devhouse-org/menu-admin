@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 type categoryType = {
   name: string | null;
+  nameAr?: string | null;
   restaurantId: string | null;
   icon?: string | null;
   orderNumber?: number | null;
@@ -18,32 +19,32 @@ function EditCategory() {
   const location = useLocation();
   const record = location.state;
   const [name, setName] = useState<string | null>(record.name);
-  const [nameAr, setNameAr] = useState<string | null>(null);
+  const [nameAr, setNameAr] = useState<string | null>(record.nameAr ?? null);
   const [restaurantId, setRestaurantId] = useState<string | null>(record.restaurantId);
   const [icon, setIcon] = useState<string | null>(record.icon || null);
   const [orderNumber, setOrderNumber] = useState<number | null>(record.orderNumber || null);
   const { categoryId } = useParams();
   const navigate = useNavigate();
 
-  // Fetch existing Arabic translation for category name
+  // Backfill helper for the transition window between the schema deploy and the
+  // one-shot Translation→Category.nameAr data migration. Rows created before
+  // that migration still have nameAr=null but a value in the Translation table,
+  // so we look it up so editors don't see a blank field.
   useEffect(() => {
-    const fetchTranslation = async () => {
-      if (record.name) {
-        try {
-          const response = await axiosInstance.get('/locale/translation-value', {
-            params: { key: record.name, lang: 'ar' }
-          });
-          if (response.data.value) {
-            setNameAr(response.data.value);
-          }
-        } catch (error) {
-          console.log('No existing translation found or error fetching:', error);
-        }
-      }
+    if (record.nameAr || !record.name) return;
+    let cancelled = false;
+    axiosInstance
+      .get('/locale/translation-value', { params: { key: record.name, lang: 'ar' } })
+      .then((response) => {
+        if (!cancelled && response.data?.value) setNameAr(response.data.value);
+      })
+      .catch(() => {
+        // Silent — no translation yet is a valid state.
+      });
+    return () => {
+      cancelled = true;
     };
-    
-    fetchTranslation();
-  }, [record.name]);
+  }, [record.name, record.nameAr]);
 
   // Update to use infinite query for restaurants
   const {
@@ -77,31 +78,17 @@ function EditCategory() {
 
     const newEdit: categoryType = {
       name: name?.trim() || "",
+      nameAr: nameAr?.trim() || null,
       restaurantId,
       icon: icon || null,
       orderNumber: orderNumber,
     };
 
     try {
-      // Update the category first
       await mutation.mutateAsync(newEdit);
-      
-      // Add Arabic translation if provided
-      if (nameAr?.trim()) {
-        try {
-          await axiosInstance.post('/translation/add', {
-            key: name?.trim() || '',
-            value: nameAr.trim(),
-            language: 'ar'
-          });
-        } catch (error) {
-          console.error('Error adding translation:', error);
-        }
-      }
-      
       navigate("/categories");
     } catch (error) {
-      console.error('Error updating category or adding translation:', error);
+      console.error('Error updating category:', error);
     }
   };
 

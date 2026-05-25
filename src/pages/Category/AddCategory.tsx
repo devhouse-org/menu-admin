@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 type CreateCategoryDto = {
   name: string;
+  nameAr?: string | null;
   icon?: string | null;
   restaurantId: string;
   orderNumber?: number | null;
@@ -54,31 +55,17 @@ function AddCategory() {
 
     const newCategory: CreateCategoryDto = {
       name: name.trim(),
+      nameAr: nameAr.trim() || null,
       restaurantId,
       icon: icon || null,
       orderNumber: orderNumber,
     };
 
     try {
-      // Create the category first
       await mutation.mutateAsync(newCategory);
-      
-      // Add Arabic translation if provided
-      if (nameAr.trim()) {
-        try {
-          await axiosInstance.post('/translation/add', {
-            key: name.trim(),
-            value: nameAr.trim(),
-            language: 'ar'
-          });
-        } catch (error) {
-          console.error('Error adding translation:', error);
-        }
-      }
-      
       navigate("/categories");
     } catch (error) {
-      console.error('Error creating category or adding translation:', error);
+      console.error('Error creating category:', error);
     }
   };
 
